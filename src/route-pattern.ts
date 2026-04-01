@@ -2,10 +2,9 @@
 // Copyright 2026 Substrate AI, Inc.
 
 /**
- * Define a URL route once, then generate URLs from it and match URLs against
- * it — with path params inferred from the pattern string at compile time.
- * Built on {@link https://developer.mozilla.org/en-US/docs/Web/API/URLPattern | URLPattern}
- * and {@link https://developer.mozilla.org/en-US/docs/Web/API/URL | URL}.
+ * Generate and match URLs from the same route pattern — typesafe path params,
+ * built on {@link https://developer.mozilla.org/en-US/docs/Web/API/URLPattern | URLPattern},
+ * zero dependencies.
  *
  * @module
  */
@@ -50,16 +49,17 @@ const COLON_SEGMENT_RE = /:([^/]*)/g;
 const NO_BASE = new URL("http://n");
 
 /**
- * Define a route pattern once, then generate and match URLs.
+ * Generate and match URLs from the same route pattern — typesafe path params,
+ * built on {@link https://developer.mozilla.org/en-US/docs/Web/API/URLPattern | URLPattern},
+ * zero dependencies.
  *
- * Path params (`:name`) are type-checked at compile time. Constructor-level
- * query params are baked into the route: on generation they are always appended
- * (overriding same-named caller-supplied keys), and on matching the URL must
- * contain these exact key-value pairs or `.exec()` returns `null`.
+ * TypeScript catches missing or misspelled params at compile time. Constructor
+ * query params are always included on generation (overriding same-named
+ * caller-supplied keys) and must be present with exact values on matching.
  *
- * A leading `/` anchors to the root for exact pathname matching; without it,
- * the pattern matches any URL whose path ends with it on a segment boundary.
- * `.exec(url, base)` anchors a suffix pattern to a pathname prefix.
+ * A leading `/` requires the full pathname to match (exact). Without it, the
+ * pattern matches any URL whose path ends with it on a segment boundary
+ * (suffix). Pass a pathname prefix to `.exec()` to anchor a suffix pattern.
  *
  * @example Generate and match a URL
  * ```ts
@@ -80,7 +80,7 @@ const NO_BASE = new URL("http://n");
  * assertEquals(API_USER.exec("https://example.com/v2/api/users/42"), null);
  * ```
  *
- * @example Route query params override caller-supplied keys
+ * @example Route query wins
  * ```ts
  * import { assertEquals } from "jsr:@std/assert";
  *
@@ -157,14 +157,12 @@ export class RoutePattern<const P extends string> {
   }
 
   /**
-   * Generate a full URL. Path `:param` placeholders are substituted and
-   * percent-encoded. Route query params are always appended; additional
-   * query params can be passed as a separate argument.
+   * Produce a full URL. `:param` placeholders are substituted and
+   * percent-encoded.
    *
-   * The base URL should end with `/` so resolution appends rather than
-   * replaces the last segment (this is
-   * {@link https://developer.mozilla.org/en-US/docs/Web/API/URL/URL | WHATWG URL}
-   * behavior, not a library quirk).
+   * Base URLs with sub-paths **must** end with `/` — otherwise
+   * {@link https://developer.mozilla.org/en-US/docs/Web/API/URL/URL | `new URL()`}
+   * replaces the last segment instead of appending.
    *
    * @example Basic usage
    * ```ts
@@ -186,12 +184,12 @@ export class RoutePattern<const P extends string> {
   }
 
   /**
-   * Generate a URL path (+ query string) with no base.
-   * Useful for `<a href>` attributes or client-side navigation.
+   * Produce just the path (plus query string if any). Useful for `<a href>`
+   * attributes or client-side navigation.
    *
-   * @returns Path string, with query string appended when the route defines
-   *   query params or the caller passes additional keys. Suffix patterns
-   *   produce `"users/42"` (no leading slash), exact patterns `"/api/users/42"`.
+   * Suffix patterns produce bare paths (`"users/42"`, not `"/users/42"`),
+   * which resolve relative to the current page URL. Use an exact pattern or
+   * `.url()` for a rooted path.
    *
    * @example Suffix vs. exact output
    * ```ts
@@ -210,14 +208,12 @@ export class RoutePattern<const P extends string> {
   }
 
   /**
-   * Match a URL and extract path params, or return `null`. Returns `null`
-   * when the path doesn't match, when route query params are missing or
-   * mismatched, or when the input can't be parsed as a URL.
+   * Extract path params on match (`{}` if the pattern has none), or `null` on
+   * failure — never throws.
    *
-   * Accepts full URLs (`https://...`), absolute paths (`/users/42`), and
-   * bare paths (`users/42`). Trailing slashes, query strings, and fragments
-   * are tolerated. Param values are percent-decoded; malformed sequences
-   * like `%zz` are preserved as-is.
+   * Accepts full URLs, absolute paths, and bare relative paths. Trailing
+   * slashes are tolerated. Malformed percent-encoding is preserved as-is.
+   * Unparseable URLs return `null`.
    *
    * @example Matching different input formats
    * ```ts
@@ -232,12 +228,9 @@ export class RoutePattern<const P extends string> {
    */
   exec(url: string): RouteMatch<P>;
   /**
-   * Match a URL anchored to a pathname prefix — matches only if the URL's
-   * path starts with `base`. Host is not checked.
-   *
-   * @param url - URL to match (same formats as the single-argument overload).
-   * @param base - Pathname prefix to anchor against. Should end with `/`
-   *   so the boundary falls on a path segment.
+   * Match a URL anchored to a pathname prefix. The URL's path must start
+   * with `base`. Only the path is checked, not the host. Base should end
+   * with `/`.
    *
    * @example Anchored matching
    * ```ts
@@ -284,20 +277,9 @@ export class RoutePattern<const P extends string> {
     return groups as RouteMatch<P>;
   }
 
-  /**
-   * Boolean version of `exec(url)`.
-   *
-   * @example
-   * ```ts
-   * import { assertEquals } from "jsr:@std/assert";
-   *
-   * const USER = new RoutePattern("users/:id");
-   * assertEquals(USER.test("https://example.com/users/42"), true);
-   * assertEquals(USER.test("https://example.com/posts/42"), false);
-   * ```
-   */
+  /** Boolean version of `.exec()`. */
   test(url: string): boolean;
-  /** Boolean version of `exec(url, base)`. Anchors to a pathname prefix. */
+  /** Boolean version of `.exec()`. Anchors to a pathname prefix. */
   test(url: string, base: string): boolean;
   test(...args: [string] | [string, string]): boolean {
     return this.exec(...(args as [string, string])) !== null;
