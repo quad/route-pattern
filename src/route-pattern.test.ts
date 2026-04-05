@@ -27,8 +27,12 @@ Deno.test("RoutePattern construction", async (t) => {
 
 Deno.test("RoutePattern.url", async (t) => {
   const cases: [string, () => string, string][] = [
-    ["empty pathname", () => new RoutePattern("").url(B), `${B}/`],
-    ["static, no params", () => new RoutePattern("users").url(B), `${B}/users`],
+    ["empty pathname", () => new RoutePattern("").url(B, {}), `${B}/`],
+    [
+      "static, no params",
+      () => new RoutePattern("users").url(B, {}),
+      `${B}/users`,
+    ],
     [
       "path param",
       () => new RoutePattern("users/:id").url(B, { id: "42" }),
@@ -50,24 +54,26 @@ Deno.test("RoutePattern.url", async (t) => {
     ],
     [
       "query-only (no path params)",
-      () => new RoutePattern("items").url(B, { page: "2", limit: "50" }),
+      () => new RoutePattern("items").url(B, {}, { page: "2", limit: "50" }),
       `${B}/items?page=2&limit=50`,
     ],
     [
       "fixed params",
-      () => new RoutePattern("search", { format: "json" }).url(B),
+      () => new RoutePattern("search", { format: "json" }).url(B, {}),
       `${B}/search?format=json`,
     ],
     [
       "fixed + query",
       () =>
-        new RoutePattern("search", { format: "json" }).url(B, { q: "hello" }),
+        new RoutePattern("search", { format: "json" }).url(B, {}, {
+          q: "hello",
+        }),
       `${B}/search?q=hello&format=json`,
     ],
     [
       "fixed wins over query collision",
       () =>
-        new RoutePattern("search", { format: "json" }).url(B, {
+        new RoutePattern("search", { format: "json" }).url(B, {}, {
           format: "csv",
           extra: "ok",
         }),
@@ -75,7 +81,8 @@ Deno.test("RoutePattern.url", async (t) => {
     ],
     [
       "multiple fixed params",
-      () => new RoutePattern("search", { format: "json", lang: "en" }).url(B),
+      () =>
+        new RoutePattern("search", { format: "json", lang: "en" }).url(B, {}),
       `${B}/search?format=json&lang=en`,
     ],
     [
@@ -107,7 +114,7 @@ Deno.test("RoutePattern.url base resolution", async (t) => {
   for (const [base, expected] of cases) {
     await t.step(
       `base ${base}`,
-      () => assertEquals(route.url(base), expected),
+      () => assertEquals(route.url(base, {}), expected),
     );
   }
 });
@@ -137,8 +144,8 @@ Deno.test("RoutePattern.url encoding", async (t) => {
 
 Deno.test("RoutePattern.path", async (t) => {
   const cases: [string, () => string, string][] = [
-    ["empty pathname", () => new RoutePattern("").path(), ""],
-    ["static", () => new RoutePattern("users").path(), "users"],
+    ["empty pathname", () => new RoutePattern("").path({}), ""],
+    ["static", () => new RoutePattern("users").path({}), "users"],
     [
       "with param",
       () => new RoutePattern("users/:id").path({ id: "42" }),
@@ -146,12 +153,13 @@ Deno.test("RoutePattern.path", async (t) => {
     ],
     [
       "fixed only",
-      () => new RoutePattern("search", { format: "json" }).path(),
+      () => new RoutePattern("search", { format: "json" }).path({}),
       "search?format=json",
     ],
     [
       "fixed + query",
-      () => new RoutePattern("search", { format: "json" }).path({ q: "hello" }),
+      () =>
+        new RoutePattern("search", { format: "json" }).path({}, { q: "hello" }),
       "search?q=hello&format=json",
     ],
     [
@@ -460,7 +468,7 @@ Deno.test("Round-trip: url → exec recovers path params", async (t) => {
   ][] = [
     [
       "static",
-      () => new RoutePattern("users").url(B),
+      () => new RoutePattern("users").url(B, {}),
       new RoutePattern("users"),
       {},
     ],
@@ -488,14 +496,16 @@ Deno.test("Round-trip: url → exec recovers path params", async (t) => {
     ],
     [
       "fixed params",
-      () => new RoutePattern("search", { format: "json" }).url(B),
+      () => new RoutePattern("search", { format: "json" }).url(B, {}),
       new RoutePattern("search", { format: "json" }),
       {},
     ],
     [
       "fixed + query",
       () =>
-        new RoutePattern("search", { format: "json" }).url(B, { q: "hello" }),
+        new RoutePattern("search", { format: "json" }).url(B, {}, {
+          q: "hello",
+        }),
       new RoutePattern("search", { format: "json" }),
       {},
     ],
@@ -584,9 +594,9 @@ Deno.test("param names: RoutePattern and URLPattern agree", () => {
     const name = Array.from(inner, (b) => chars[b % chars.length]).join("");
     const pattern = `items/:${name}`;
 
-    let route: RoutePattern<string> | null = null;
+    let route: RoutePattern<`items/:${string}`> | null = null;
     try {
-      route = new RoutePattern(pattern as string & Record<PropertyKey, never>);
+      route = new RoutePattern(pattern as `items/:${string}`);
     } catch {
       continue;
     }

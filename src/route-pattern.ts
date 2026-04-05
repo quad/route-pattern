@@ -17,20 +17,17 @@ export type ExtractPathParams<T extends string> = T extends
   : never;
 
 /**
- * Arguments to `.url()` and `.path()` after the base. When the pattern has
- * `:param` placeholders, `params` is required; otherwise the signature
- * collapses to just an optional `query` argument.
+ * Options passed to `.url()` and `.path()`. When the pattern has `:param`
+ * placeholders, the object must contain matching keys with string values;
+ * otherwise an empty object `{}` is the only valid value.
  */
-export type RouteParams<P extends string> = [ExtractPathParams<P>] extends
-  [never] ? [query?: Record<string, string>]
-  : [
-    params: { [K in ExtractPathParams<P>]: string },
-    query?: Record<string, string>,
-  ];
+export type RouteOptions<P extends string> = [ExtractPathParams<P>] extends
+  [never] ? Record<string, never>
+  : Record<ExtractPathParams<P>, string>;
 
 /** Return type of `.exec()` — extracted path params or `null`. */
 export type RouteMatch<P extends string> =
-  | { [K in ExtractPathParams<P>]: string }
+  | Record<ExtractPathParams<P>, string>
   | null;
 
 // Two regexes, aligned by construction:
@@ -86,7 +83,7 @@ const NO_BASE = new URL("http://n");
  *
  * const SEARCH = new RoutePattern("search", { format: "json" });
  * assertEquals(
- *   SEARCH.url("https://a.com/", { format: "csv" }),
+ *   SEARCH.url("https://a.com/", {}, { format: "csv" }),
  *   "https://a.com/search?format=json",
  * );
  * ```
@@ -94,7 +91,6 @@ const NO_BASE = new URL("http://n");
 export class RoutePattern<const P extends string> {
   private readonly anchor: "/" | undefined;
   private readonly searchEntries: readonly [string, string][];
-  private readonly hasPathParams: boolean;
   private readonly pathname: P;
   private readonly suffixPattern: URLPattern;
 
@@ -110,9 +106,7 @@ export class RoutePattern<const P extends string> {
     pathname: P,
     query: Record<string, string> = {},
   ) {
-    this.hasPathParams = false;
     for (const [, name] of pathname.matchAll(COLON_SEGMENT_RE)) {
-      this.hasPathParams = true;
       if (!PARAM_NAME_RE.test(name)) {
         throw new Error(
           `Invalid param name ":${name}" in pathname: ${pathname} ` +
@@ -133,10 +127,10 @@ export class RoutePattern<const P extends string> {
   }
 
   /** Substitute `:param` placeholders with percent-encoded values. */
-  private resolvePath(params: Record<string, string>): string {
+  private resolvePath(options: RouteOptions<P>): string {
     return this.pathname.replace(
       COLON_SEGMENT_RE,
-      (_, key) => encodeURIComponent(params[key]),
+      (_, key: keyof typeof options) => encodeURIComponent(options[key]),
     );
   }
 
@@ -179,8 +173,12 @@ export class RoutePattern<const P extends string> {
    * );
    * ```
    */
-  url(base: string, ...args: RouteParams<P>): string {
-    return new URL(this.path(...args), base).toString();
+  url(
+    base: string,
+    options: RouteOptions<P>,
+    query?: Record<string, string>,
+  ): string {
+    return new URL(this.path(options, query), base).toString();
   }
 
   /**
@@ -202,9 +200,8 @@ export class RoutePattern<const P extends string> {
    * assertEquals(ABS.path({ id: "42" }), "/api/users/42");
    * ```
    */
-  path(...args: RouteParams<P>): string {
-    const [params = {}, query] = this.hasPathParams ? args : [{}, args[0]];
-    return this.resolvePath(params) + this.buildSearchString(query);
+  path(options: RouteOptions<P>, query?: Record<string, string>): string {
+    return this.resolvePath(options) + this.buildSearchString(query);
   }
 
   /**

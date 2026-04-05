@@ -76,12 +76,12 @@ import { assertEquals } from "jsr:@std/assert";
 const ITEMS = new RoutePattern("items/123");
 
 assertEquals(
-  ITEMS.url("https://example.com/api/v2/"),
+  ITEMS.url("https://example.com/api/v2/", {}),
   "https://example.com/api/v2/items/123",
 );
 
 assertEquals(
-  ITEMS.url("https://example.com/api/v2"),
+  ITEMS.url("https://example.com/api/v2", {}),
   "https://example.com/api/items/123", // "v2" is gone!
 );
 ```
@@ -212,12 +212,12 @@ const SEARCH = new RoutePattern("search", { format: "json" });
 
 // Generation
 assertEquals(
-  SEARCH.url("https://example.com/", { q: "hello" }),
+  SEARCH.url("https://example.com/", {}, { q: "hello" }),
   "https://example.com/search?q=hello&format=json",
 );
 
 assertEquals(
-  SEARCH.url("https://example.com/", { format: "csv" }),
+  SEARCH.url("https://example.com/", {}, { format: "csv" }),
   "https://example.com/search?format=json", // route query wins
 );
 
