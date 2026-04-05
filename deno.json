@@ -1,6 +1,6 @@
 {
   "name": "@quad/route-pattern",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate and match URLs from the same route pattern — typesafe path params, built on URLPattern, zero dependencies.",
   "exports": "./src/route-pattern.ts",
   "publish": {
