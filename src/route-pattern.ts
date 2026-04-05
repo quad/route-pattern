@@ -265,7 +265,7 @@ export class RoutePattern<const P extends string> {
       string,
       string
     >;
-    const anchor = baseStr !== undefined ? baseStr : this.anchor;
+    const anchor = baseStr ?? this.anchor;
     if (anchor && `${prefix}/` !== anchor) return null;
 
     // Decode percent-encoded param values; preserve malformed sequences as-is.
