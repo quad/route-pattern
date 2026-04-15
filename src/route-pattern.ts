@@ -17,13 +17,16 @@ export type ExtractPathParams<T extends string> = T extends
   : never;
 
 /**
- * Options passed to `.url()` and `.path()`. When the pattern has `:param`
- * placeholders, the object must contain matching keys with string values;
- * otherwise an empty object `{}` is the only valid value.
+ * Rest args for `.url()` and `.path()`. When the pattern has `:param`
+ * placeholders, `options` is required with matching keys; otherwise it
+ * can be omitted entirely.
  */
-export type RouteOptions<P extends string> = [ExtractPathParams<P>] extends
-  [never] ? Record<string, never>
-  : Record<ExtractPathParams<P>, string>;
+export type RouteArgs<P extends string> = [ExtractPathParams<P>] extends [never]
+  ? [options?: Record<string, never>, query?: Record<string, string>]
+  : [
+    options: Record<ExtractPathParams<P>, string>,
+    query?: Record<string, string>,
+  ];
 
 /** Return type of `.exec()` — extracted path params or `null`. */
 export type RouteMatch<P extends string> =
@@ -127,10 +130,10 @@ export class RoutePattern<const P extends string> {
   }
 
   /** Substitute `:param` placeholders with percent-encoded values. */
-  private resolvePath(options: RouteOptions<P>): string {
+  private resolvePath(options: Record<string, string>): string {
     return this.pathname.replace(
       COLON_SEGMENT_RE,
-      (_, key: keyof typeof options) => encodeURIComponent(options[key]),
+      (_, key) => encodeURIComponent(options[key]),
     );
   }
 
@@ -175,10 +178,9 @@ export class RoutePattern<const P extends string> {
    */
   url(
     base: string,
-    options: RouteOptions<P>,
-    query?: Record<string, string>,
+    ...args: RouteArgs<P>
   ): string {
-    return new URL(this.path(options, query), base).toString();
+    return new URL(this.path(...args), base).toString();
   }
 
   /**
@@ -200,8 +202,11 @@ export class RoutePattern<const P extends string> {
    * assertEquals(ABS.path({ id: "42" }), "/api/users/42");
    * ```
    */
-  path(options: RouteOptions<P>, query?: Record<string, string>): string {
-    return this.resolvePath(options) + this.buildSearchString(query);
+  path(
+    ...args: RouteArgs<P>
+  ): string {
+    const [options, query] = args;
+    return this.resolvePath(options ?? {}) + this.buildSearchString(query);
   }
 
   /**
