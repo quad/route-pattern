@@ -98,6 +98,7 @@ export class RoutePattern<const P extends string> {
   private readonly suffixPattern: URLPattern;
 
   /**
+   * Create a route pattern.
    * @param pathname - URL path pattern with optional `:param` placeholders.
    *   A leading `/` anchors to the root for exact pathname matching; without
    *   it, the pattern matches any URL whose path ends with it on a segment
