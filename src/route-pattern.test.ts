@@ -23,6 +23,20 @@ Deno.test("RoutePattern construction", async (t) => {
       );
     });
   }
+
+  await t.step("surfaces real error when URLPattern is missing", () => {
+    const orig = globalThis.URLPattern;
+    delete (globalThis as Record<string, unknown>)["URLPattern"];
+    try {
+      assertThrows(
+        () => new RoutePattern("any"),
+        ReferenceError,
+        "URLPattern is not defined",
+      );
+    } finally {
+      globalThis.URLPattern = orig;
+    }
+  });
 });
 
 Deno.test("RoutePattern.url", async (t) => {

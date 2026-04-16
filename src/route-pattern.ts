@@ -126,7 +126,10 @@ export class RoutePattern<const P extends string> {
     try {
       this.suffixPattern = new URLPattern({ pathname: `*/${bare}{/}?` });
     } catch (cause) {
-      throw new Error(`Invalid route pathname: ${pathname}`, { cause });
+      if (cause instanceof TypeError) {
+        throw new Error(`Invalid route pathname: ${pathname}`, { cause });
+      }
+      throw cause;
     }
   }
 
