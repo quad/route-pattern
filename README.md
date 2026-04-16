@@ -45,7 +45,7 @@ USER.url("https://api.example.com/", {});
 
 ## Generate URLs
 
-### `.url(base, params, query?)`
+### `.url(base, params?, query?)`
 
 Produces a full URL. `:param` placeholders are substituted and percent-encoded.
 
@@ -76,17 +76,17 @@ import { assertEquals } from "jsr:@std/assert";
 const ITEMS = new RoutePattern("items/123");
 
 assertEquals(
-  ITEMS.url("https://example.com/api/v2/", {}),
+  ITEMS.url("https://example.com/api/v2/"),
   "https://example.com/api/v2/items/123",
 );
 
 assertEquals(
-  ITEMS.url("https://example.com/api/v2", {}),
+  ITEMS.url("https://example.com/api/v2"),
   "https://example.com/api/items/123", // "v2" is gone!
 );
 ```
 
-### `.path(params, query?)`
+### `.path(params?, query?)`
 
 Produces just the path (plus query string if any). Useful for `<a href>`
 attributes or client-side navigation.
@@ -219,6 +219,12 @@ assertEquals(
 assertEquals(
   SEARCH.url("https://example.com/", {}, { format: "csv" }),
   "https://example.com/search?format=json", // route query wins
+);
+
+// options can be omitted when there are no path params
+assertEquals(
+  SEARCH.url("https://example.com/"),
+  "https://example.com/search?format=json",
 );
 
 // Matching
